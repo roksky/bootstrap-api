@@ -1,4 +1,4 @@
-module tracking_server
+module github.com/roksky/bootstrap-api
 
 go 1.23.0
 
