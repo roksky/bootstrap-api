@@ -26,3 +26,6 @@ jobs:
       - name: Run unit tests
         run: go test ./...
         working-directory: ${{ env.relativePath }}
+      - name: Check formatting
+        run: go fmt ./...
+        working-directory: ${{ env.relativePath }}
