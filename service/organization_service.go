@@ -27,7 +27,7 @@ func (e *OrganizationService) Create(filterContext *repository.OrganizationSearc
 	if err != nil {
 		return nil, err
 	}
-	return e.repository.Save(filterContext, item)
+	return e.repository.Save(nil, filterContext, item)
 }
 
 func (e *OrganizationService) CreateMany(filterContext *repository.OrganizationSearch, items []*model.Organization) ([]*model.Organization, error) {
@@ -38,7 +38,7 @@ func (e *OrganizationService) CreateMany(filterContext *repository.OrganizationS
 		}
 	}
 
-	return e.repository.SaveMany(filterContext, items)
+	return e.repository.SaveMany(nil, filterContext, items)
 }
 
 func (e *OrganizationService) Update(filterContext *repository.OrganizationSearch, item *model.Organization) (*model.Organization, error) {
@@ -49,7 +49,7 @@ func (e *OrganizationService) Update(filterContext *repository.OrganizationSearc
 	if item.Id == uuid.Nil {
 		return nil, errors.New("entity id is missing")
 	}
-	return e.repository.Update(filterContext, item)
+	return e.repository.Update(nil, filterContext, item)
 }
 
 func (e *OrganizationService) UpdateMany(filterContext *repository.OrganizationSearch, items []*model.Organization) ([]*model.Organization, error) {
@@ -63,7 +63,7 @@ func (e *OrganizationService) UpdateMany(filterContext *repository.OrganizationS
 		}
 	}
 
-	return e.repository.UpdateMany(filterContext, items)
+	return e.repository.UpdateMany(nil, filterContext, items)
 }
 
 func (e *OrganizationService) Delete(filterContext *repository.OrganizationSearch, id uuid.UUID) error {
@@ -71,7 +71,7 @@ func (e *OrganizationService) Delete(filterContext *repository.OrganizationSearc
 		return errors.New("entity id is missing")
 	}
 
-	return e.repository.Delete(filterContext, id)
+	return e.repository.Delete(nil, filterContext, id)
 }
 
 func (e *OrganizationService) DeleteMany(filterContext *repository.OrganizationSearch, ids []uuid.UUID) error {
@@ -81,14 +81,14 @@ func (e *OrganizationService) DeleteMany(filterContext *repository.OrganizationS
 		}
 	}
 
-	return e.repository.DeleteByIds(filterContext, ids)
+	return e.repository.DeleteByIds(nil, filterContext, ids)
 }
 
 func (e *OrganizationService) FindById(filterContext *repository.OrganizationSearch, id uuid.UUID) (*model.Organization, error) {
 	if id == uuid.Nil {
 		return nil, errors.New("entity id is missing")
 	}
-	return e.repository.FindById(filterContext, id)
+	return e.repository.FindById(nil, filterContext, id)
 }
 
 func (e *OrganizationService) FindByIds(filterContext *repository.OrganizationSearch, ids []uuid.UUID) ([]*model.Organization, error) {
@@ -98,18 +98,18 @@ func (e *OrganizationService) FindByIds(filterContext *repository.OrganizationSe
 		}
 	}
 
-	return e.repository.FindByIds(filterContext, ids)
+	return e.repository.FindByIds(nil, filterContext, ids)
 }
 
 func (e *OrganizationService) FindAll(filterContext *repository.OrganizationSearch, pageSize int, page int) (response.PagedResult[*model.Organization], error) {
 	var result response.PagedResult[*model.Organization]
 
-	items, err := e.repository.FindAll(filterContext, pageSize, page)
+	items, err := e.repository.FindAll(nil, filterContext, pageSize, page)
 	if err != nil {
 		return result, err
 	}
 
-	count, err := e.repository.Count(nil)
+	count, err := e.repository.Count(nil, filterContext)
 
 	result.Items = items
 	result.TotalItems = count
@@ -122,12 +122,12 @@ func (e *OrganizationService) FindAll(filterContext *repository.OrganizationSear
 func (e *OrganizationService) Search(searchParams *repository.OrganizationSearch) (response.PagedResult[*model.Organization], error) {
 	var result response.PagedResult[*model.Organization]
 
-	items, err := e.repository.Search(searchParams)
+	items, err := e.repository.Search(nil, searchParams)
 	if err != nil {
 		return result, err
 	}
 
-	count, err := e.repository.Count(searchParams)
+	count, err := e.repository.Count(nil, searchParams)
 
 	result.Items = items
 	result.TotalItems = count
@@ -138,5 +138,5 @@ func (e *OrganizationService) Search(searchParams *repository.OrganizationSearch
 }
 
 func (e *OrganizationService) Deleted(searchParams *repository.OrganizationSearch) ([]string, error) {
-	return e.repository.Deleted(searchParams)
+	return e.repository.Deleted(nil, searchParams)
 }
