@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/roksky/bootstrap-api/auth"
 	"github.com/roksky/bootstrap-api/config"
 	"github.com/roksky/bootstrap-api/controller"
 	"github.com/roksky/bootstrap-api/database"
@@ -14,12 +13,18 @@ import (
 	"github.com/roksky/bootstrap-api/job"
 	"github.com/roksky/bootstrap-api/router"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-func startApp() {
+type StratUpConfig struct {
+	IntrospectURL string `json:"introspect_url"`
+	SentryDSN     string `json:"sentry_dsn"`
+}
+
+// IntrospectURL := "https://auth.example.com/oauth/introspect"
+// SentryDSN := "https://4edd0d587e0fdee6b69867ab46c2cb78@o4507588780425216.ingest.us.sentry.io/4507588782260224"
+func StartApp(startupConfig StratUpConfig, provider controller.Provider) {
 	file, err := os.OpenFile("gin.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatal().Msgf("Failed to open log file: %v", err)
@@ -35,29 +40,23 @@ func startApp() {
 
 	db := config.DatabaseConnection()
 	myDb := database.NewDatabase(db)
-	validate := validator.New()
 
-	authDB := auth.NewAuthDatabase(db)
-	err = authDB.AutoMigrate()
 	helper.ErrorPanic(err)
 
 	err = myDb.AutoMigrate()
 	helper.ErrorPanic(err)
 
-	// controllers
-	provider := controller.NewProvider(db, validate)
-
 	// Router
-	routeHandler, err := router.NewRouteHandler("/api", db, authDB)
+	routeHandler, err := router.NewRouteHandler("/api")
 	helper.ErrorPanic(err)
 
 	// Enable Sentry
-	routeHandler.EnableSentry()
+	routeHandler.EnableSentry(startupConfig.SentryDSN)
 
 	// Enable CORS
 	routeHandler.AllowCORS()
 
-	err = routeHandler.EnableAuth(config.EnvConfigs.Auth.ClientId, config.EnvConfigs.Auth.ClientSecret)
+	err = routeHandler.EnableAuth(startupConfig.IntrospectURL, config.EnvConfigs.Auth.ClientId, config.EnvConfigs.Auth.ClientSecret)
 	helper.ErrorPanic(err)
 
 	routeHandler.RegisterRoutes(provider.GetControllers())

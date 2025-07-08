@@ -8,15 +8,11 @@ import (
 
 type SystemUser struct {
 	UserId              uuid.UUID      `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"userId"`
-	FullNames           string         `json:"fullNames"`
 	UserName            string         `gorm:"index" json:"userName"`
-	Password            string         `json:"password" binding:"required"`
 	DateCreated         time.Time      `json:"dateCreated"`
 	DateUpdated         time.Time      `json:"dateUpdated"`
 	DateDeleted         gorm.DeletedAt `gorm:"index" json:"dateDeleted"`
 	PrimaryOrganization uuid.UUID      `json:"primaryOrganization"`
-	NeedsPasswordChange bool           `json:"needsPasswordChange"`
-	OrganizationManaged bool           `json:"organizationManaged"`
 }
 
 func (t *SystemUser) TableName() string {

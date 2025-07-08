@@ -6,13 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/roksky/bootstrap-api/auth"
-	"github.com/roksky/bootstrap-api/constants"
-	"github.com/roksky/bootstrap-api/controller"
-	"github.com/roksky/bootstrap-api/model"
-	"github.com/roksky/bootstrap-api/repository"
-	"github.com/roksky/bootstrap-api/service"
-
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
@@ -20,38 +13,31 @@ import (
 	"github.com/go-oauth2/oauth2/v4"
 	"github.com/go-oauth2/oauth2/v4/manage"
 	"github.com/go-oauth2/oauth2/v4/server"
-	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"github.com/roksky/bootstrap-api/constants"
+	"github.com/roksky/bootstrap-api/controller"
 )
 
 type RouteHandler interface {
 	RegisterRoutes(controllers []controller.Controller)
 	RegisterRoute(controller controller.Controller)
 	GetEngine() *gin.Engine
-	EnableAuth(clientId string, clientSecret string) error
+	EnableAuth(introspectURL string, clientId string, clientSecret string) error
 	AllowCORS()
-	EnableSentry()
+	EnableSentry(dsn string)
 }
 
 type Router struct {
-	baseUrl                       string
-	engine                        *gin.Engine
-	server                        *server.Server
-	authEnabled                   bool
-	authDatabase                  *auth.Database
-	systemUserService             *service.SystemUserService
-	systemUserOrganizationService service.BaseService[model.SystemUserOrganization, uuid.UUID, repository.SystemUserOrganizationSearch]
+	baseUrl     string
+	engine      *gin.Engine
+	server      *server.Server
+	authEnabled bool
 }
 
-func NewRouteHandler(baseUrl string, db *gorm.DB, authDB *auth.Database) (RouteHandler, error) {
+func NewRouteHandler(baseUrl string) (RouteHandler, error) {
 	return &Router{
-		baseUrl:                       baseUrl,
-		engine:                        gin.Default(),
-		authEnabled:                   false,
-		authDatabase:                  authDB,
-		systemUserService:             service.NewSystemUserService(repository.NewSystemUserRepo(db), repository.NewOrganizationRepository(db), repository.NewSystemUserOrganizationRepository(db), validator.New()),
-		systemUserOrganizationService: service.NewSystemUserOrganizationService(repository.NewSystemUserOrganizationRepository(db), validator.New()),
+		baseUrl:     baseUrl,
+		engine:      gin.Default(),
+		authEnabled: false,
 	}, nil
 }
 
@@ -86,6 +72,20 @@ func (r *Router) RegisterRoute(cnt controller.Controller) {
 	if r.authEnabled && cnt.IsAuthEnabled() {
 		controllerRouter.Use(ginoauth2.HandleTokenVerify(routerConfig))
 	}
+
+	// Middleware to enforce Bearer token validation
+	authMiddleware := func(c *gin.Context) {
+		ti, err := r.server.ValidationBearerToken(c.Request)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+		// you can pull claims from ti.GetUserID(), ti.GetScope(), etc.
+		c.Set("TokenInfo", ti)
+		c.Next()
+	}
+	baseRouter.Use(authMiddleware)
+
 	for _, route := range cnt.Handlers() {
 		switch route.GetHttpMethod() {
 		case controller.GET:
@@ -123,10 +123,10 @@ func (r *Router) AllowCORS() {
 	})
 }
 
-func (r *Router) EnableSentry() {
+func (r *Router) EnableSentry(dsn string) {
 	// To initialize Sentry's handler, you need to initialize Sentry itself beforehand
 	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:           "https://4edd0d587e0fdee6b69867ab46c2cb78@o4507588780425216.ingest.us.sentry.io/4507588782260224",
+		Dsn:           dsn,
 		EnableTracing: true,
 		// Set TracesSampleRate to 1.0 to capture 100%
 		// of transactions for performance monitoring.
@@ -142,41 +142,17 @@ func (r *Router) EnableSentry() {
 	}))
 }
 
-func (r *Router) EnableAuth(clientId string, clientSecret string) error {
+func (r *Router) EnableAuth(introspectURL string, clientId string, clientSecret string) error {
 	// Initialize the OAuth2 manager with the in-memory token store
 	manager := manage.NewDefaultManager()
-	manager.MustTokenStorage(auth.NewDatabaseTokenStore(r.authDatabase))
+	manager.MapTokenStorage(NewIntrospectionTokenStore(introspectURL, clientId, clientSecret))
 	manager.SetAuthorizeCodeTokenCfg(manage.DefaultAuthorizeCodeTokenCfg)
-
-	// Set up the client store
-	dbStore := auth.NewDatabaseClientStore(r.authDatabase)
-
-	err := dbStore.Set(clientId, &auth.Client{
-		ID:                   clientId,
-		Secret:               clientSecret,
-		Domain:               "http://localhost:9119",
-		Scope:                "read,write",
-		AuthorizedGrantTypes: "password,refresh_token,client_credentials,authorization_code,implicit",
-	})
-	if err != nil {
-		return err
-	}
-
-	manager.MapClientStorage(dbStore)
 
 	manager.SetPasswordTokenCfg(&manage.Config{AccessTokenExp: time.Hour * 24, RefreshTokenExp: time.Hour * 24 * 30 * 12, IsGenerateRefresh: true})
 
 	// Initialize and configure the OAuth2 server
 	r.server = ginoauth2.InitServer(manager)
 	ginoauth2.SetAllowGetAccessRequest(true)
-	ginoauth2.SetClientInfoHandler(server.ClientFormHandler)
-	ginoauth2.SetClientScopeHandler(r.clientScopeHandler)
-	ginoauth2.SetClientAuthorizedHandler(r.clientAuthorizedHandler)
-	ginoauth2.SetPasswordAuthorizationHandler(r.passwordAuthorizationHandler)
-	ginoauth2.SetExtensionFieldsHandler(r.extensionFieldsHandler)
-
-	r.engine.Any("/oauth2/token", ginoauth2.HandleTokenRequest)
-	r.engine.Any("/oauth2/refresh_token", r.refreshTokenHandler(manager))
 
 	// set all the url to check token
 	r.authEnabled = true
@@ -213,85 +189,12 @@ func (r *Router) refreshTokenHandler(manager *manage.Manager) gin.HandlerFunc {
 			"token_type":    "Bearer",
 		}
 
-		extensions := r.extensionFieldsHandler(token)
+		//extensions := r.extensionFieldsHandler(token)
 		// merge ro response
-		for k, v := range extensions {
-			response[k] = v
-		}
+		//for k, v := range extensions {
+		//response[k] = v
+		//}
 
 		c.JSON(http.StatusOK, response)
 	}
-}
-
-func (r *Router) clientAuthorizedHandler(clientID string, grant oauth2.GrantType) (allowed bool, err error) {
-	client, err := r.authDatabase.GetClientRepo().FindById(clientID)
-	if err != nil {
-		return false, err
-	}
-	if client == nil {
-		return false, nil
-	}
-
-	err = client.VerifyGrantTypes(string(grant))
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (r *Router) clientScopeHandler(tgr *oauth2.TokenGenerateRequest) (allowed bool, err error) {
-	client, err := r.authDatabase.GetClientRepo().FindById(tgr.ClientID)
-	if err != nil {
-		return false, err
-	}
-	if client == nil {
-		return false, nil
-	}
-
-	err = client.VerifyScopes(tgr.Scope)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (r *Router) passwordAuthorizationHandler(ctx context.Context, clientID, username, password string) (userID string, err error) {
-	err = r.systemUserService.VerifyPassword(username, password)
-	if err != nil {
-		return "", err
-	}
-
-	return username, nil
-}
-
-func (r *Router) extensionFieldsHandler(ti oauth2.TokenInfo) (fieldsValue map[string]interface{}) {
-	// add user  orgs to token
-	fieldsValue = make(map[string]interface{})
-
-	systemUser, err := r.systemUserService.GetUserByUserName(ti.GetUserID())
-	if err != nil {
-		panic(err)
-	}
-	if systemUser.PrimaryOrganization == uuid.Nil {
-		fieldsValue["primary_org"] = nil
-	} else {
-		fieldsValue["primary_org"] = systemUser.PrimaryOrganization.String()
-	}
-
-	searchParams := &repository.SystemUserOrganizationSearch{
-		PageSize:   100,
-		PageNumber: 0,
-		SystemUser: systemUser.UserId.String(),
-	}
-	orgs, err := r.systemUserOrganizationService.Search(searchParams)
-	if err != nil {
-		panic(err)
-	}
-	fieldsValue["organizations"] = make([]string, len(orgs.Items))
-	for i, org := range orgs.Items {
-		fieldsValue["organizations"].([]string)[i] = org.OrganizationId.String()
-	}
-
-	// get the token users orgs and primary org
-	return fieldsValue
 }

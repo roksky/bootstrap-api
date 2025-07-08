@@ -8,9 +8,9 @@ import (
 type SystemUserRole string
 
 const (
-	Owner    SystemUserRole = "owner"
-	Employee SystemUserRole = "employee"
-	Admin    SystemUserRole = "admin"
+	Owner  SystemUserRole = "owner"
+	Member SystemUserRole = "member"
+	Admin  SystemUserRole = "admin"
 )
 
 // Implement the Scanner interface for the enum type
