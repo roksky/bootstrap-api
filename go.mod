@@ -19,7 +19,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/net v0.46.0
 	gorm.io/driver/postgres v1.6.0
-	gorm.io/gorm v1.31.0
+	gorm.io/gorm v1.31.1
 )
 
 require (
