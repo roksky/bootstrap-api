@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.1
 
 require (
-	github.com/getsentry/sentry-go v0.36.2
+	github.com/getsentry/sentry-go v0.37.0
 	github.com/getsentry/sentry-go/gin v0.36.2
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-oauth2/gin-server v1.1.0
