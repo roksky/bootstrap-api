@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/getsentry/sentry-go v0.46.1
-	github.com/getsentry/sentry-go/gin v0.46.0
+	github.com/getsentry/sentry-go/gin v0.46.1
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-oauth2/gin-server v1.1.0
 	github.com/go-oauth2/oauth2/v4 v4.5.4
