@@ -26,8 +26,8 @@ github.com/gavv/httpexpect v2.0.0+incompatible h1:1X9kcRshkSKEjNJJxX9Y9mQ5BRfbxU
 github.com/gavv/httpexpect v2.0.0+incompatible/go.mod h1:x+9tiU1YnrOvnB725RkpoLv1M62hOWzwo5OXotisrKc=
 github.com/getsentry/sentry-go v0.46.2 h1:1jhYwrKGa3sIpo/y5iDNXS5wDoT7I1KNzMHrnK6ojns=
 github.com/getsentry/sentry-go v0.46.2/go.mod h1:evVbw2qotNUdYG8KxXbAdjOQWWvWIwKxpjdZZIvcIPw=
-github.com/getsentry/sentry-go/gin v0.46.1 h1:Knq9i5KaWpK37iZvpICn4unKrAsOZ20vRGuzst3jfOk=
-github.com/getsentry/sentry-go/gin v0.46.1/go.mod h1:YJCPaFfUloS8EK2oJnKykf8WPiZpm5dl0Ob8rye86WY=
+github.com/getsentry/sentry-go/gin v0.46.2 h1:+YCJvpEKuKVgna6ZAHMIlJAiBk1D+Nh+K4awpUtJNG0=
+github.com/getsentry/sentry-go/gin v0.46.2/go.mod h1:fPPyezNO87IwDi7Q5sCtA6tGHoHD7DutdYbN/l77m2k=
 github.com/gin-contrib/sse v1.1.0 h1:n0w2GMuUpWDVp7qSpvze6fAu9iRxJY4Hmj6AmBOU05w=
 github.com/gin-contrib/sse v1.1.0/go.mod h1:hxRZ5gVpWMT7Z0B0gSNYqqsSCNIJMjzvm6fqCz9vjwM=
 github.com/gin-gonic/gin v1.12.0 h1:b3YAbrZtnf8N//yjKeU2+MQsh2mY5htkZidOM7O0wG8=
